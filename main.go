@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/clausecker/nfc/v2"
@@ -20,17 +18,23 @@ func main() {
 		log.Fatal("error initializing initiator", err)
 	}
 
-	modulations := []nfc.Modulation{
-		{Type: nfc.ISO14443a, BaudRate: nfc.Nbr106},
-	}
+	modulation := nfc.Modulation{Type: nfc.ISO14443a, BaudRate: nfc.Nbr106}
 
-	_, _, err = device.InitiatorPollTarget(
-		modulations,
-		60,
-		150*time.Millisecond,
+	targets, err := device.InitiatorListPassiveTargets(modulation)
+	if err != nil {
+		log.Fatal("Error listing Passive Targets: ", err)
+	}
+	if len(targets) <= 0 {
+		log.Fatal("No targets found")
+	}
+	target := targets[0].(*nfc.ISO14443aTarget)
+	log.Print("found UID: ", target.UID[:target.UIDLen])
+	_, err = device.InitiatorSelectPassiveTarget(
+		modulation,
+		target.UID[:target.UIDLen],
 	)
 	if err != nil {
-		log.Fatalf("Error polling device")
+		log.Fatal("Error Selecting Target: ", err)
 	}
 
 	selectApplication := apdu.Capdu{

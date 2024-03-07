@@ -1,10 +1,10 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
-
 	"github.com/clausecker/nfc/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/skythen/apdu"
+	// "time"
 )
 
 func main() {
@@ -61,4 +61,33 @@ func main() {
 	}
 
 	log.Infof("Received %d bytes: %x", n, rx[0:n])
+
+	// for true {
+
+	// 	getAccessToken := apdu.Capdu{
+	// 		Cla: 0xD0,
+	// 		Ins: 0x0F,
+	// 		P1:  0x00,
+	// 		P2:  0x00,
+	// 		// Data: []byte{0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x07},
+	// 		Data: []byte{0x00, 0x08},
+	// 	}
+
+	// 	tx, err = getAccessToken.Bytes()
+	// 	if err != nil {
+	// 		log.Fatal("Error assembling getAccessToken APDU", err)
+	// 	}
+
+	// 	rx = make([]byte, 256)
+
+	// 	n, err = device.InitiatorTransceiveBytes(
+	// 		tx, rx, 0,
+	// 	)
+	// 	if err != nil {
+	// 		log.Fatal("Error sending bytes: ", err)
+	// 	}
+
+	// 	log.Infof("Received %d bytes: %x", n, rx[0:n])
+	// 	time.Sleep(10 * time.Millisecond)
+	// }
 }

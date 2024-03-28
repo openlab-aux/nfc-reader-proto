@@ -63,7 +63,7 @@ func main() {
 	log.Infof("Received %d bytes: %x", n, rx[0:n])
 
 	for true {
-
+ 		log.Info("Loooop")
 		getAccessToken := apdu.Capdu{
 			Cla: 0xD0,
 			Ins: 0x0F,

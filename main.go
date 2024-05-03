@@ -17,6 +17,16 @@ var getMetadataApdu = apdu.Capdu{
 	Ne:  04,
 }
 
+func getTokenApdu(chunk int, chunk_size int) apdu.Capdu {
+	return apdu.Capdu{
+		Cla: 0xD0,
+		Ins: 0x02,
+		P1:  byte(chunk),
+		P2:  byte(chunk_size),
+		Ne:  04,
+	}
+}
+
 var selectApplication = apdu.Capdu{
 	Cla:  0x00,
 	Ins:  0xA4,
@@ -46,8 +56,16 @@ func transceive(device *nfc.Device, command *apdu.Capdu) (response []byte) {
 	return rx[0:n]
 }
 
-func getToken(device *nfc.Device, len int) (string, error) {
-
+func getToken(device *nfc.Device, chunkCount int, rest int) string {
+	token := make([]byte, 0)
+	log.Info(chunkCount)
+	for i := 0; i < chunkCount; i++ {
+		apdu := getTokenApdu(i, chunk_size)
+		response := transceive(device, &apdu)
+		token = append(token, response...)
+	}
+	log.Info(string(token))
+	return string(token)
 }
 
 func main() {
@@ -89,8 +107,11 @@ func main() {
 
 	log.Infof("Token has %d mod %d chunks = %d bytes", chunk_count, remainder, chunk_count*chunk_size+remainder)
 
+	getToken(&device, chunk_count, remainder)
+
 	err = device.Close()
 	if err != nil {
 		log.Fatal("Error Closing Device: ", err)
 	}
+
 }

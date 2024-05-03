@@ -1,9 +1,10 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
-
+	"context"
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/clausecker/nfc/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/skythen/apdu"
 )
 
@@ -68,6 +69,18 @@ func getToken(device *nfc.Device, chunkCount int, rest int) string {
 	return string(token)
 }
 
+func validateToken(token string) bool {
+	client := gocloak.NewClient("https://keycloak.lab.weltraumpflege.org")
+	ctx := context.Background()
+	rptResult, err := client.RetrospectToken(ctx, token, "openlab-app", "VcJGq5LUZBg37nrbSEnwWOSRMKJtrlOe", "OpenLabTest")
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	log.Info(rptResult)
+	return true
+}
+
 func main() {
 	device, err := nfc.Open("")
 	if err != nil {
@@ -107,7 +120,8 @@ func main() {
 
 	log.Infof("Token has %d mod %d chunks = %d bytes", chunk_count, remainder, chunk_count*chunk_size+remainder)
 
-	getToken(&device, chunk_count, remainder)
+	token := getToken(&device, chunk_count, remainder)
+	validateToken(token)
 
 	err = device.Close()
 	if err != nil {

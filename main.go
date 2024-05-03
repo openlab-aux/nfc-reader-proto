@@ -59,7 +59,7 @@ func transceive(device *nfc.Device, command *apdu.Capdu) (response []byte) {
 func getToken(device *nfc.Device, chunkCount int, rest int) string {
 	token := make([]byte, 0)
 	log.Info(chunkCount)
-	for i := 0; i < chunkCount; i++ {
+	for i := 0; i <= chunkCount; i++ {
 		apdu := getTokenApdu(i, chunk_size)
 		response := transceive(device, &apdu)
 		token = append(token, response...)

@@ -1,14 +1,17 @@
 package main
 
 import (
-	"context"
-	"github.com/Nerzal/gocloak/v13"
+	"fmt"
+
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/clausecker/nfc/v2"
+	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
 	"github.com/skythen/apdu"
 )
 
 var chunk_size = 64
+var jwks keyfunc.Keyfunc
 
 var getMetadataApdu = apdu.Capdu{
 	Cla: 0xD0,
@@ -63,25 +66,39 @@ func getToken(device *nfc.Device, chunkCount int, rest int) string {
 	for i := 0; i <= chunkCount; i++ {
 		apdu := getTokenApdu(i, chunk_size)
 		response := transceive(device, &apdu)
-		token = append(token, response...)
+		token = append(token, response[0:(len(response)-2)]...)
 	}
-	log.Info(string(token))
+	// apdu := getTokenApdu(chunkCount, rest)
+	// response := transceive(device, &apdu)
+	// token = append(token, response[0:(len(response)-3)]...)
+	log.Infof("we received a %d bytes token", len(string(token)))
 	return string(token)
 }
 
-func validateToken(token string) bool {
-	client := gocloak.NewClient("https://keycloak.lab.weltraumpflege.org")
-	ctx := context.Background()
-	rptResult, err := client.RetrospectToken(ctx, token, "openlab-app", "VcJGq5LUZBg37nrbSEnwWOSRMKJtrlOe", "OpenLabTest")
+func validateToken(in string) (ok bool, err error) {
+	token, err := jwt.Parse(
+		in,
+		jwks.Keyfunc,
+		jwt.WithIssuer("https://keycloak.lab.weltraumpflege.org/realms/OpenLabTest"),
+	)
+
+	fmt.Println("parsed token", token)
+
 	if err != nil {
-		log.Error(err)
-		return false
+		return false, err
 	}
-	log.Info(rptResult)
-	return true
+
+	return true, nil
 }
 
 func main() {
+	var err error
+
+	jwks, err = keyfunc.NewDefault([]string{"https://keycloak.lab.weltraumpflege.org/realms/OpenLabTest/protocol/openid-connect/certs"})
+	if err != nil {
+		log.Fatal("could not get keys", err)
+	}
+
 	device, err := nfc.Open("")
 	if err != nil {
 		log.Fatal("error opening nfc device", err)
@@ -114,6 +131,9 @@ func main() {
 	transceive(&device, &selectApplication)
 
 	metaResponse := transceive(&device, &getMetadataApdu)
+	if metaResponse[len(metaResponse)-2] == 0x6f {
+		log.Fatalf("got meta response: %x", metaResponse)
+	}
 
 	chunk_count := int(metaResponse[0])
 	remainder := int(metaResponse[1])
@@ -121,7 +141,15 @@ func main() {
 	log.Infof("Token has %d mod %d chunks = %d bytes", chunk_count, remainder, chunk_count*chunk_size+remainder)
 
 	token := getToken(&device, chunk_count, remainder)
-	validateToken(token)
+	ok, err := validateToken(token)
+	if err != nil {
+		log.Fatal("error validating token", err)
+	}
+	if ok {
+		log.Info("token valid")
+	} else {
+		log.Error("token invalid")
+	}
 
 	err = device.Close()
 	if err != nil {
